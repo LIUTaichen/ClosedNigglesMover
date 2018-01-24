@@ -10,17 +10,14 @@ import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import sun.java2d.pipe.SpanShapeRenderer;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class SheetAPIService {
@@ -44,6 +41,9 @@ public class SheetAPIService {
 
     @Value("${sheet.id.niggles.closed}")
     private Integer closedNigglesSheetId;
+
+    @Value("${sheet.id.niggles.open}")
+    private Integer opendNigglesSheetId;
 
     private static final String JOB_STATE_CLOSED="Closed";
 
@@ -182,7 +182,18 @@ public class SheetAPIService {
         List<Map<String, String>> converted = SheetAPIUtil.convertRange(range.getValues(), headers);
         //TODO:find all closed cases
 
-        List<Map<String, String >> rowsClosed = findClosedRows(converted);
+        List<Map<String, String>> rowsClosed = new ArrayList<>();
+        List<Integer> rowsToDelete = new ArrayList<>();
+        for (int i = 0; i < converted.size(); i++) {
+            Map<String, String> row = converted.get(i);
+            String jobState = row.get("Job State");
+            if (JOB_STATE_CLOSED.equals(jobState)) {
+                log.info("found closed case with Plant # "  +  row.get("Plant #") + " , and created date: " + row.get("Date Created"));
+                rowsClosed.add(row);
+                rowsToDelete.add(i + 2);
+            }
+        }
+
         if(rowsClosed.isEmpty()) {
             log.info("New closed niggles not found. No need to proceed");
             return;
@@ -197,35 +208,7 @@ public class SheetAPIService {
 
         updateRange(updatesRequired);
 
-        log.debug("calling plantService");
-
-
-
-
-
-        //TODO: create update for inserting rows into closed sheet
-
-
-        //TODO: create update for removing rows
-        //List<Plant> plants = plantRepository.findByFleetIdIsNotNullAndActiveTrueAndFleetIdIn(fleetIdInSheet);
-
-        //Map<String, Plant> plantMap = new HashMap<String, Plant>();
-        /*plantMap=   plants.stream().collect(Collectors.toMap(Plant::getFleetId, p -> p, (p1, p2 ) ->{
-            log.info("duplicate fleet Id " + p1.getFleetId());
-            return PlantsUtil.findBetterPlant(p1, p2);
-        }));*/
-
-       // log.info("size of plant list : " + plants.size());
-
-
-
-        //List<ValueRange> toBeUpdated = this.generateUpdate(headers, converted);
-        //if(toBeUpdated.isEmpty()){
-            log.info("No update needs to be done. Plant list in sync with Shirley.");
-        //}else{
-            log.info("Calling sheets api to update plant list.");
-            //this.updateRange(toBeUpdated);
-        //}
+        deleteRowsInNigglesSheet(rowsToDelete);
 
     }
 
@@ -259,19 +242,7 @@ public class SheetAPIService {
         return updatesRequired;
     }
 
-    private List<Map<String,String>> findClosedRows(List<Map<String, String>> converted) {
 
-        List<Map<String, String>> rowsClosed = new ArrayList<>();
-        for (Map<String, String> row : converted) {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/YYYY");
-            String jobState = row.get("Job State");
-            if (JOB_STATE_CLOSED.equals(jobState)) {
-                log.info("found closed case with Plant # "  +  row.get("Plant #") + " , and created date: " + row.get("Date Created"));
-                rowsClosed.add(row);
-            }
-        }
-        return rowsClosed;
-    }
 
     public boolean createNewRowsInClosedSheet(Integer numberOfRows)  {
         BatchUpdateSpreadsheetRequest requestBody = new BatchUpdateSpreadsheetRequest();
@@ -289,6 +260,34 @@ public class SheetAPIService {
             BatchUpdateSpreadsheetResponse response = request.execute();
 
             // TODO: Change code below to process the `response` object:
+            log.info(response.toPrettyString());
+        }catch(Exception e){
+            log.error("error when calling api", e);
+            return false;
+        }
+        return true;
+    }
+
+    public boolean deleteRowsInNigglesSheet(List<Integer> rowsToBeDeleted){
+        BatchUpdateSpreadsheetRequest requestBody = new BatchUpdateSpreadsheetRequest();
+        List<Request> requests = new ArrayList<>();
+        Collections.sort(rowsToBeDeleted);
+        Collections.reverse(rowsToBeDeleted);
+        rowsToBeDeleted.forEach(rowIndex -> {
+            requests.add(new Request().setDeleteDimension(new DeleteDimensionRequest().setRange(new DimensionRange().setStartIndex(rowIndex)
+                    .setEndIndex(rowIndex + 1)
+                    .setSheetId(opendNigglesSheetId)
+                    .setDimension("ROWS"))));
+        });
+
+        requestBody.setRequests(requests);
+        try {
+            Sheets sheetsService = this.getSheetsService();
+            Sheets.Spreadsheets.BatchUpdate request =
+                    sheetsService.spreadsheets().batchUpdate(spreadSheetId, requestBody);
+
+            BatchUpdateSpreadsheetResponse response = request.execute();
+
             log.info(response.toPrettyString());
         }catch(Exception e){
             log.error("error when calling api", e);
