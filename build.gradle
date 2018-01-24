@@ -32,4 +32,7 @@ dependencies {
 	compile('org.springframework.boot:spring-boot-starter-mail')
 	runtime('org.springframework.boot:spring-boot-devtools')
 	testCompile('org.springframework.boot:spring-boot-starter-test')
+	compile 'com.google.api-client:google-api-client:1.23.0'
+	compile 'com.google.oauth-client:google-oauth-client-jetty:1.23.0'
+	compile 'com.google.apis:google-api-services-sheets:v4-rev493-1.23.0'
 }
