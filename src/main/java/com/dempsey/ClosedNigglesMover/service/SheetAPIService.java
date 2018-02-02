@@ -113,12 +113,7 @@ public class SheetAPIService {
         log.debug("calling sheet service");
         ValueRange range = this.loadSheet();
         List<String> headers = SheetAPIUtil.getHeaders(range.getValues().get(indexOfHeaderRow));
-        for(int i = 0; i <= indexOfHeaderRow; i++){
-            range.getValues().remove(0);
-        }
-
         List<Map<String, String>> converted = SheetAPIUtil.convertRange(range.getValues(), headers);
-
         List<Map<String, String>> rowsClosed = new ArrayList<>();
         List<Integer> rowsToDelete = new ArrayList<>();
         for (int i = 0; i < converted.size(); i++) {
