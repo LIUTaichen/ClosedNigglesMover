@@ -22,6 +22,8 @@ import java.util.*;
 @Service
 public class SheetAPIService {
 
+    public static final int INDEX_OF_COLUMN_OF_DATE_CLOSED = 14;
+    public static final String NAME_OF_LAST_COLUMN = "Priority";
     private Logger log = LoggerFactory.getLogger(SheetAPIService.class);
 
     @Value("${email.google.api}")
@@ -45,9 +47,12 @@ public class SheetAPIService {
     @Value("${sheet.id.niggles.open}")
     private Integer opendNigglesSheetId;
 
+    @Value("${row.index.header}")
+    private int indexOfHeaderRow;
+
     private static final String JOB_STATE_CLOSED="Closed";
-
-
+    @Value("${last.column}")
+    private String lastColumn;
 
 
     public Sheets getSheetsService() throws IOException, GeneralSecurityException {
@@ -103,84 +108,16 @@ public class SheetAPIService {
             log.error("error when updating sheet", e);
         }
     }
-    /*
-    public void updateOneRange( List<ValueRange> updates){
-        try {
-            ValueRange update = updates.get(0);
-            String range = updates.get(0).getRange();
-            UpdateValuesResponse result =
-                    getSheetsService().spreadsheets().values().update(plantSheetId, range, update ).setValueInputOption("RAW").execute();
-            log.info("Result of sheet update: " + result.toPrettyString());
-        }
-        catch (Exception e){
-            log.error("error when updating sheet", e);
-        }
-    }
-    */
 
-
-    /*public List<ValueRange> generateUpdate(List<String> headers, List<Map<String, String>> converted) {
-        List<ValueRange> updatesRequired = new ArrayList<ValueRange>();
-
-
-
-
-        for(Map<String, String> row : rowsClosed) {
-            ValueRange valueRange = new ValueRange();
-
-
-            requests.add(new Request().set)
-
-
-            String range = SheetAPIUtil.getRangeString(columnIndex, rowNumber);
-            valueRange.setRange("Plants!" + range);
-            List<List<Object>> outerList = new ArrayList<List<Object>>();
-            List<Object> innerList = new ArrayList<>();
-            innerList.add(newValue);
-            outerList.add(innerList);
-            valueRange.setValues(outerList);
-            updatesRequired.add(valueRange);
-
-        }
-
-            shirleyValueMap.keySet().forEach(key -> {
-                String oldValue = row.get(key);
-                String newValue = shirleyValueMap.get(key);
-                if (!oldValue.equals(newValue)) {
-                    log.info("found difference in row " + (converted.indexOf(row) + 2) + " Column : " + key + " , original value :  " + oldValue
-                            + " , new value from Shirley : " + newValue);
-
-                    ValueRange valueRange = new ValueRange();
-                    Integer columnIndex = headers.indexOf(key) + 1;
-                    Integer rowNumber = converted.indexOf(row) + 2;
-
-
-                    String range = SheetAPIUtil.getRangeString(columnIndex, rowNumber);
-                    valueRange.setRange("Plants!" + range);
-                    List<List<Object>> outerList = new ArrayList<List<Object>>();
-                    List<Object> innerList = new ArrayList<>();
-                    innerList.add(newValue);
-                    outerList.add(innerList);
-                    valueRange.setValues(outerList);
-                    updatesRequired.add(valueRange);
-                }
-
-            });
-
-
-
-        }
-        return updatesRequired;
-    }
-*/
     public void moveClosedNiggles(){
         log.debug("calling sheet service");
         ValueRange range = this.loadSheet();
-        List<String> headers = SheetAPIUtil.getHeaders(range.getValues().get(1));
-        range.getValues().remove(0);
-        range.getValues().remove(0);
+        List<String> headers = SheetAPIUtil.getHeaders(range.getValues().get(indexOfHeaderRow));
+        for(int i = 0; i <= indexOfHeaderRow; i++){
+            range.getValues().remove(0);
+        }
+
         List<Map<String, String>> converted = SheetAPIUtil.convertRange(range.getValues(), headers);
-        //TODO:find all closed cases
 
         List<Map<String, String>> rowsClosed = new ArrayList<>();
         List<Integer> rowsToDelete = new ArrayList<>();
@@ -220,7 +157,7 @@ public class SheetAPIService {
             Map<String,String> rowValues = rowsClosed.get(i);
             ValueRange valueRange = new ValueRange();
             int rowIndex = i+2;
-            valueRange.setRange("Closed Cases!A" + rowIndex + ":M" + rowIndex);
+            valueRange.setRange("Closed Cases!A" + rowIndex + ":" + lastColumn + rowIndex);
             List<List<Object>> outerList = new ArrayList<List<Object>>();
             List<Object> innerList = new ArrayList<>(headers.size() + 1);
             for(int j = 0; j <headers.size() + 1; j++ ){
@@ -229,12 +166,12 @@ public class SheetAPIService {
 
             rowValues.entrySet().forEach(row -> {
                 int columnIndex = headers.indexOf(row.getKey());
-                if("Is Urgent".equals(row.getKey())){
+                if(NAME_OF_LAST_COLUMN.equals(row.getKey())){
                     columnIndex++;
                 }
                 innerList.set(columnIndex, row.getValue());
             });
-            innerList.set(11, dateClosed);
+            innerList.set(INDEX_OF_COLUMN_OF_DATE_CLOSED, dateClosed);
             outerList.add(innerList);
             valueRange.setValues(outerList);
             updatesRequired.add(valueRange);
