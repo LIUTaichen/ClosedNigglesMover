@@ -18,6 +18,10 @@ public class SheetAPIUtil {
     public static List<Map<String, String>> convertRange(List<List<Object>> rangeValue, List<String> headers){
         List<Map<String, String>> converted = new ArrayList<Map<String, String>>();
         for(List<Object> row : rangeValue){
+            if(row.isEmpty()){
+                log.info("skipping empty row with index of " + rangeValue.indexOf(row));
+                continue;
+            }
             if(headers.get(0).equals(row.get(0))){
                 log.info("skipping header row with index of " + rangeValue.indexOf(row));
                 continue;
