@@ -122,7 +122,7 @@ public class SheetAPIService {
             if (JOB_STATE_CLOSED.equals(jobState)) {
                 log.info("found closed case with Plant # "  +  row.get("Plant #") + " , and created date: " + row.get("Date Created"));
                 rowsClosed.add(row);
-                rowsToDelete.add(i + 2);
+                rowsToDelete.add(i + 1);
             }
         }
 
@@ -211,6 +211,10 @@ public class SheetAPIService {
                     .setSheetId(opendNigglesSheetId)
                     .setDimension("ROWS"))));
         });
+
+
+
+
 
         requestBody.setRequests(requests);
         try {
