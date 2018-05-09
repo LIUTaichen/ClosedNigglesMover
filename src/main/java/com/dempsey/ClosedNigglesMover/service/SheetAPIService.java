@@ -213,9 +213,6 @@ public class SheetAPIService {
         });
 
 
-
-
-
         requestBody.setRequests(requests);
         try {
             Sheets sheetsService = this.getSheetsService();

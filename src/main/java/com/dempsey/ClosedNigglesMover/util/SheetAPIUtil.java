@@ -26,8 +26,8 @@ public class SheetAPIUtil {
                 log.info("skipping header row with index of " + rangeValue.indexOf(row));
                 continue;
             }else if(StringUtils.isEmpty((String)row.get(0))){
-                log.info("skipping info row with index of " + rangeValue.indexOf(row));
-                continue;
+                log.info("found row with missing plant id " + rangeValue.indexOf(row));
+                //continue;
             }
 
             Map<String, String> valueMap = new HashMap<String, String>();
